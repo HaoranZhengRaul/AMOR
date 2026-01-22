@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-01-16T20:28:15.867185",
+  "device": "cpu",
+  "simple_task": {
+    "entropy_at_retrieval": 1.9770175076934604,
+    "entropy_at_local": 0.8854847207724784,
+    "gap": 1.091532786920982,
+    "use_entropy": true,
+    "n_retrieval_samples": 3703,
+    "n_local_samples": 123297
+  },
+  "hard_task": {
+    "entropy_at_retrieval": 2.852729161544255,
+    "entropy_at_local": 2.832285700075812,
+    "gap": 0.02044346146844278,
+    "use_entropy": false,
+    "n_retrieval_samples": 4397,
+    "n_local_samples": 250603
+  },
+  "recommendation": "entropy"
+}

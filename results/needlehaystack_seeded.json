@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-01-18T23:06:04.254935",
+  "task": "NeedleHaystack_Seeded",
+  "master_seed": 42,
+  "config": {
+    "epochs": 30,
+    "d_model": 64,
+    "seq_length": 256,
+    "noise_range": [
+      50,
+      150
+    ],
+    "impossible_prob": 0.0
+  },
+  "models": {
+    "ssm_only": {
+      "accuracy": 0.07806274509803922,
+      "retrieval_accuracy": 0.08024917552216929,
+      "local_accuracy": 0.07801492333955808,
+      "params": 52371
+    },
+    "full_attention": {
+      "accuracy": 0.07610980392156863,
+      "retrieval_accuracy": 0.043972150971051664,
+      "local_accuracy": 0.0768127209046974,
+      "params": 167955
+    },
+    "amor_oracle": {
+      "accuracy": 0.08300392156862745,
+      "retrieval_accuracy": 0.3708318065225357,
+      "local_accuracy": 0.07670853002700947,
+      "params": 78502,
+      "gate_fires": 0.02140392156862745
+    },
+    "amor_entropy": {
+      "accuracy": 0.07721568627450981,
+      "retrieval_accuracy": 0.09930377427629168,
+      "local_accuracy": 0.07673257407570669,
+      "params": 78504,
+      "gate_fires": 0.8097411764705882
+    }
+  }
+}

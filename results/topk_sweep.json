@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-01-15T16:36:16.741875",
+  "task": "Top-K Sweep",
+  "config": {
+    "epochs": 30,
+    "d_model": 64,
+    "seq_length": 256,
+    "noise_range": [
+      50,
+      150
+    ]
+  },
+  "topk_results": {
+    "3": {
+      "retrieval_accuracy": 0.8139106402579457,
+      "params": 78502
+    },
+    "8": {
+      "retrieval_accuracy": 0.07508060801473976,
+      "params": 78502
+    },
+    "16": {
+      "retrieval_accuracy": 0.06264394288346384,
+      "params": 78502
+    },
+    "32": {
+      "retrieval_accuracy": 0.07277752187931828,
+      "params": 78502
+    }
+  },
+  "conclusion": "topk_not_bottleneck"
+}

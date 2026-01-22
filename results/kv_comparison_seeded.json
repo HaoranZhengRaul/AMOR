@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-01-18T23:56:23.838851",
+  "task": "KV_Comparison_Seeded",
+  "master_seed": 42,
+  "config": {
+    "epochs": 30,
+    "d_model": 64,
+    "seq_length": 256,
+    "noise_range": [
+      50,
+      150
+    ],
+    "impossible_query_prob": 0.0
+  },
+  "models": {
+    "ghost_kv": {
+      "retrieval_accuracy": 0.36277024551117626,
+      "gate_fires": 0.02140392156862745,
+      "params": 78502
+    },
+    "raw_embedding_kv": {
+      "retrieval_accuracy": 0.060828142176621476,
+      "gate_fires": 0.02140392156862745,
+      "params": 79718
+    }
+  },
+  "conclusion": "ghost_kv_critical"
+}
