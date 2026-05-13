@@ -1,0 +1,11 @@
+# Core
+torch>=2.2
+transformers>=4.43
+einops>=0.7
+
+# Mamba-2 backbone
+mamba-ssm>=2.0
+causal-conv1d>=1.4
+
+# Gated DeltaNet backbone
+flash-linear-attention>=0.1
