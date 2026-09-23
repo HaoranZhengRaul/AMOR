@@ -158,14 +158,21 @@ class EntropyGate(nn.Module):
         self.offset_k = offset_k
         self.register_buffer('running_threshold', torch.tensor(init_threshold))
         self.register_buffer('running_std', torch.tensor(0.1))
+        self.router = None
 
     def forward(self, logits: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # Detached: entropy drives gating decisions only. CE loss trains the
         # backbone via the final logits path, never through the gate.
-        logits_f32 = logits.detach().float()
-        probs = F.softmax(logits_f32, dim=-1)
-        raw_entropy = -(probs * (probs + 1e-10).log()).sum(dim=-1)
-        entropy = raw_entropy / self.max_entropy
+        if self.router is not None:
+            if self.training:
+                raise RuntimeError("Fitted routers are for inference; detach them before training.")
+            with torch.no_grad():
+                entropy = self.router(logits.detach())
+        else:
+            logits_f32 = logits.detach().float()
+            probs = F.softmax(logits_f32, dim=-1)
+            raw_entropy = -(probs * (probs + 1e-10).log()).sum(dim=-1)
+            entropy = raw_entropy / self.max_entropy
 
         if self.training:
             entropy_detached = entropy.detach()
@@ -585,7 +592,8 @@ class AMOR(nn.Module):
                 # Block 0 in 'classic' mode: input is already norm_f'd.
                 h_normed = h
 
-            logits_for_gate = self.lm_head(h_normed)
+            logits_for_gate = (h_normed if amor_block.gate.router is not None
+                               else self.lm_head(h_normed))
             h_out, info = amor_block(h_normed, logits_for_gate)
             del logits_for_gate
 

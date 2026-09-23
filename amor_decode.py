@@ -89,6 +89,12 @@ class AMORDecodeWrapper:
             backbone_cache = Mamba2Cache(
                 self.config, batch_size=batch, dtype=self.dtype, device=self.device,
             )
+            # Convolution history must match the autocast projection dtype.
+            # Preserve the recurrent SSM state and model parameters in fp32.
+            if self.device.type == "cuda" and torch.is_autocast_enabled():
+                backbone_cache.conv_states = backbone_cache.conv_states.to(
+                    dtype=torch.get_autocast_dtype("cuda")
+                )
             cache_position = torch.arange(0, seq_len, device=self.device)
             for ssd_layer, mlp_norm, mlp in zip(
                 self.model.ssd_layers, self.model.mlp_norms, self.model.mlps,
@@ -170,7 +176,10 @@ class AMORDecodeWrapper:
             else:
                 h_normed = self._block0_normed(h)
 
-            gate, _ = _chunked_gate(self.model.lm_head, h_normed, amor_block.gate)
+            if amor_block.gate.router is not None:
+                gate, _ = amor_block.gate(h_normed)
+            else:
+                gate, _ = _chunked_gate(self.model.lm_head, h_normed, amor_block.gate)
 
             ab = amor_block
             n_heads, head_dim = ab.n_heads, ab.head_dim
@@ -228,9 +237,12 @@ class AMORDecodeWrapper:
             else:
                 h_normed = self._block0_normed(h)
 
-            gate_logits = self.model.lm_head(h_normed).detach()
-            gate, entropy = ab.gate(gate_logits)
-            del gate_logits
+            if ab.gate.router is not None:
+                gate, entropy = ab.gate(h_normed)
+            else:
+                gate_logits = self.model.lm_head(h_normed).detach()
+                gate, entropy = ab.gate(gate_logits)
+                del gate_logits
             fired = gate.item() > 0.5
 
             K_new, V_new = ab.kv_proj(h_normed)

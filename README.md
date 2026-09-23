@@ -19,8 +19,8 @@ K, V are standard linear projections of the residual stream — not SSM internal
 state. The entropy gate concentrates attention compute on positions where the
 backbone is least confident.
 
-This repository is a single-file release that subsumes the six published
-architecture variants behind three flags.
+This release provides the six architecture variants through three flags.
+The canonical three-block models also support a fitted entropy router for inference.
 
 ---
 
@@ -32,48 +32,83 @@ pip install -r requirements.txt
 
 `mamba-ssm` and `causal-conv1d` are needed for the Mamba-2 backbone;
 `flash-linear-attention` is needed for the Gated DeltaNet backbone. Both
-backbones require a CUDA-enabled GPU for the fast Triton kernels; CPU-only
-fallbacks exist but are slow.
+backbones use CUDA for the fast kernels. Mamba2 also has a slow CPU reference
+path; the supplied Gated DeltaNet implementation requires CUDA.
 
 ---
 
-## Quickstart
+## Load trained weights and generate
 
-```python
-import torch
-from amor import AMOR
-from amor_decode import AMORDecodeWrapper
+Trained model weights are hosted on Hugging Face:
 
-model = AMOR(
-    backbone='mamba2',          # 'mamba2' or 'gdn'
-    n_amor_blocks=3,            # 1 or 3
-    residual_mode='classic',    # 'classic' or 'h'
-    vocab_size=128256,
-    d_model=768, n_layer=12, d_ff=1216,
-    n_heads=12, head_dim=64,
-).cuda().eval()
+| Backbone | 180M | 440M | 1.5B |
+|---|---|---|---|
+| Mamba2 | [180M](https://huggingface.co/FlyinGodzilla/AMOR-Mamba2-180M) | [440M](https://huggingface.co/FlyinGodzilla/AMOR-Mamba2-440M) | [1.5B](https://huggingface.co/FlyinGodzilla/AMOR-Mamba2-1.5B) |
+| Gated DeltaNet | [180M](https://huggingface.co/FlyinGodzilla/AMOR-GatedDeltaNet-180M) | [440M](https://huggingface.co/FlyinGodzilla/AMOR-GatedDeltaNet-440M) | [1.5B](https://huggingface.co/FlyinGodzilla/AMOR-GatedDeltaNet-1.5B) |
 
-# Standard forward
-input_ids = torch.randint(0, 128256, (1, 1024), device='cuda')
-logits = model(input_ids)                              # [1, 1024, 128256]
-logits, details = model(input_ids, return_details=True)
-print(details['fire_rate'], details['alpha'])
-
-# Autoregressive generation with caches
-wrapper = AMORDecodeWrapper(model)
-logits, cache = wrapper.prefill(input_ids)
-next_token = logits[:, -1].argmax(-1, keepdim=True)
-for step in range(64):
-    step_idx = input_ids.shape[1] + step
-    logits, cache, fire_info = wrapper.decode_step(next_token, cache, step_idx)
-    next_token = logits[:, -1].argmax(-1, keepdim=True)
-```
-
-A runnable end-to-end demo (tiny model, CPU-friendly) is in `example.py`:
+Follow the download instructions on the selected model page and place the
+complete package in `model/`. For an anonymous review link, this repository
+also provides a checksum-verified downloader:
 
 ```bash
-python example.py
+python download_release.py ANONYMOUS_MODEL_URL --output model
 ```
+
+The package contains the base weights, configuration, manifest and separate
+optional router files.
+
+```python
+from load_model import load_model
+
+# Native entropy gating is the default.
+model = load_model("model", device="cuda")
+
+# Fitted routers replace the three gating LM-head evaluations.
+model = load_model("model", device="cuda", use_router=True)
+```
+
+Cached greedy completion, with or without the fitted routers:
+
+```bash
+python generate.py --model-dir model --prompt "The Eiffel Tower is" --max-new-tokens 32
+python generate.py --model-dir model --router --prompt "The Eiffel Tower is" --max-new-tokens 32
+```
+
+The loader handles both a single safetensors file and standard safetensors
+shards plus an index. For a sharded package, keep every model shard and
+`model.safetensors.index.json` in the same directory; no manual merging is needed.
+The base weights and router files are checksum-verified. Routers are matched to
+the exact base weights and loaded strictly. Generation accepts a single prompt;
+full forward and prefill also accept batches.
+
+### Fitted router
+
+Each AMOR block uses a width-512 SiLU MLP with a linear skip to estimate its
+normalized entropy from the same normalized residual used by the native gate.
+The estimate is compared with the original frozen threshold. Router parameters
+and computation stay fp32, including inside CUDA bf16 autocast. Calibration is
+already included in the fitted weights.
+
+Router support covers full-sequence inference, prefill and cached decoding.
+The LM head still produces the final token logits. The router is fitted
+separately after base-model pretraining; base-model training uses the native
+entropy gate. To return a loaded model to that path:
+
+```python
+from amor_router import detach_routers
+
+detach_routers(model)
+model.train()
+```
+
+The fitted packages target the canonical three-block `classic` models at 180M,
+440M and 1.5B. Other architecture settings require their own matching routers.
+
+### Architecture example
+
+`python example.py` constructs a tiny randomly initialized model and shows
+forward, prefill and cached decoding. It demonstrates the API; use the trained
+model packages for pretrained text generation.
 
 ---
 
@@ -159,12 +194,12 @@ output   = h_normed + alpha * attn_out
   applied to Q and K.
 - `out_proj` is zero-initialized; the per-channel `alpha = sigmoid(raw_alpha)`
   (clamped from below at `raw_alpha = -1`, giving a floor of ~0.27) handles
-  output magnitude scaling. At step 0 the AMOR stack is a no-op.
+  output magnitude scaling. At initialization the attention projections contribute a zero residual update.
 - Two attention modes:
   - `'full_with_mask'`: dense attention, output masked by the gate. Used for
     training; GPU-friendly.
   - `'true_sparse'`: Q and the attention computation only run for firing
-    positions. Bit-identical output for the same weights/inputs. Used for
+    positions. Small floating-point differences from dense attention can occur. Used for
     inference.
 
 ### Stacking
@@ -193,9 +228,20 @@ the embedding.
 | `requirements.txt`| Dependencies |
 | `LICENSE`         | MIT |
 
-The model and decode wrapper are self-contained: no project-internal imports.
+The release modules are self-contained and use no imports from the research workspace.
+The fitted router is in amor_router.py; load_model.py and generate.py provide
+verified loading and cached completion.
 
 ---
+
+## Tests
+
+```bash
+python -m unittest discover -s tests
+```
+
+Tests cover router precision, base-weight matching, atomic attachment, RNG
+preservation and restoration of the native gate.
 
 ## License
 

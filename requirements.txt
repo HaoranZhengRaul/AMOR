@@ -1,7 +1,9 @@
 # Core
-torch>=2.2
-transformers>=4.43
+torch>=2.6
+transformers>=4.51.3,<=5.0.0
 einops>=0.7
+safetensors>=0.4
+huggingface_hub
 
 # Mamba-2 backbone
 mamba-ssm>=2.0
