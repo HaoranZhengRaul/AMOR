@@ -39,12 +39,7 @@ path; the supplied Gated DeltaNet implementation requires CUDA.
 
 ## Load trained weights and generate
 
-Trained model weights are hosted on Hugging Face:
-
-| Backbone | 180M | 440M | 1.5B |
-|---|---|---|---|
-| Mamba2 | [180M](https://huggingface.co/FlyinGodzilla/AMOR-Mamba2-180M) | [440M](https://huggingface.co/FlyinGodzilla/AMOR-Mamba2-440M) | [1.5B](https://huggingface.co/FlyinGodzilla/AMOR-Mamba2-1.5B) |
-| Gated DeltaNet | [180M](https://huggingface.co/FlyinGodzilla/AMOR-GatedDeltaNet-180M) | [440M](https://huggingface.co/FlyinGodzilla/AMOR-GatedDeltaNet-440M) | [1.5B](https://huggingface.co/FlyinGodzilla/AMOR-GatedDeltaNet-1.5B) |
+Trained model weights will be linked here after the review period.
 
 Follow the download instructions on the selected model page and place the
 complete package in `model/`. For an anonymous review link, this repository
