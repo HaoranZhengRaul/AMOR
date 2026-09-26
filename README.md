@@ -39,7 +39,7 @@ path; the supplied Gated DeltaNet implementation requires CUDA.
 
 ## Load trained weights and generate
 
-Trained model weights will be linked here after the review period.
+Trained model weights will be linked here after the review period to avoid a double-blind review violation.
 
 Follow the download instructions on the selected model page and place the
 complete package in `model/`. For an anonymous review link, this repository
